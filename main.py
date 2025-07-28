@@ -98,7 +98,7 @@ def create_video(quote, timestamp):
     merged_audio_path = f"merged_audio_{timestamp}.mp3"
     cmd_merge_audio = [
         "ffmpeg", "-ss", str(start_time), "-i", music_path, "-i", audio_path,
-        "-filter_complex", "[1:a]volume=1[a0];[0:a]volume=0.3[a1];"
+        "-filter_complex", "[1:a]volume=1[a0];[0:a]volume=0.8[a1];"
         "[a0][a1]amix=inputs=2:duration=first:dropout_transition=2",
         "-c:a", "mp3", "-y", merged_audio_path
     ]
