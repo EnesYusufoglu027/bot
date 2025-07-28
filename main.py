@@ -77,18 +77,24 @@ def create_video(quote, timestamp):
     music_path = os.path.join(MUSIC_FOLDER, random.choice(music_files))
 
     # Temel arka plan videosu oluştur (8 sn)
+        font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"  # GitHub Actions'ta yüklü
+
     cmd_create_video = [
         "ffmpeg",
         "-loop", "1",
         "-i", bg_image_path,
-        "-c:v", "libx264",
+        "-filter_complex",
+        f"[0:v]scale=1080:1920,zoompan=z='zoom+0.001':d=200,"
+        f"drawtext=text='{quote}':fontfile={font_path}:fontsize=72:fontcolor=white:borderw=2:"
+        f"x=(w-text_w)/2:y=(h-text_h)/2",
         "-t", "8",
+        "-c:v", "libx264",
         "-pix_fmt", "yuv420p",
-        "-vf", "scale=1080:1920",
         "-y",
         "temp_video.mp4"
     ]
     subprocess.run(cmd_create_video, check=True)
+
 
     # Süre hesapla
     music_duration = get_audio_duration(music_path)
