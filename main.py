@@ -73,14 +73,12 @@ def create_video(quote, timestamp):
 
     filter_complex = (
         f"[0:v]scale=1080:1920:force_original_aspect_ratio=decrease,"
-        f"pad=1080:1920:(ow-iw)/2:(oh-ih)/2,"
-        f"zoompan=z='zoom+0.001':d={int(duration*30)},fps=30,format=yuv420p[v];"
-        f"color=c=black@0.0:size=1080x1920:d={int(duration*30)}[black];"
-        f"[black][v]overlay=format=auto:shortest=1[bg];"
-        f"[bg]drawtext=fontfile={font_path}:text='{safe_quote}':"
+        f"pad=1080:1920:(ow-iw)/2:(oh-ih)/2[v];"
+        f"[v]drawtext=fontfile={font_path}:text='{safe_quote}':"
         f"fontcolor=white:fontsize=50:borderw=2:bordercolor=black@0.7:"
         f"x='(w-text_w)/2':"
-        f"y='h-(mod(n*5\\,{int(duration*30*5)})*h/{int(duration*30)})'"
+        f"y='h-(mod(n*3\\,{int(duration*30*3)})*h/{int(duration*30)})':"
+        f"enable='between(t,0,{duration})'"
     )
 
     cmd_create_video = [
