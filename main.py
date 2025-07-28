@@ -71,6 +71,7 @@ def create_video(quote, timestamp):
     valid_image_exts = [".jpg", ".jpeg", ".png"]
     bg_images = [f for f in os.listdir(BG_FOLDER) if os.path.splitext(f)[1].lower() in valid_image_exts]
     bg_image_path = os.path.join(BG_FOLDER, random.choice(bg_images))
+    print(f"Seçilen arka plan resmi: {bg_image_path}")  # Buraya ekledik
 
     # Müzik seç
     music_files = [f for f in os.listdir(MUSIC_FOLDER) if f.lower().endswith(".mp3")]
