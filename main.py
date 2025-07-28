@@ -15,7 +15,7 @@ from google.auth.transport.requests import Request
 from googleapiclient.http import MediaFileUpload
 
 # === Ayarlar ===
-BG_FOLDER = "backgrounds"
+BG_FOLDER = "backrounds"
 MUSIC_FOLDER = "music"
 QUOTES_FILE = "jp_quotes.txt"
 UPLOADED_VIDEOS_FILE = "uploaded_videos.txt"
