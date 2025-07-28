@@ -77,8 +77,7 @@ def create_video(quote, timestamp):
     music_path = os.path.join(MUSIC_FOLDER, random.choice(music_files))
 
     # Temel arka plan videosu oluştur (8 sn)
-        font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"  # GitHub Actions'ta yüklü
-
+    font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"  # GitHub Actions'ta yüklü
     cmd_create_video = [
         "ffmpeg",
         "-loop", "1",
