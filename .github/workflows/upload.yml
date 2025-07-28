@@ -1,3 +1,5 @@
+name: Upload YouTube Video
+
 on:
   schedule:
     - cron: '30 22 * * *'    # 07:30 JST
