@@ -4,10 +4,7 @@ import asyncio
 import datetime
 import pickle
 import subprocess
-import threading
-import schedule
-import time
-from flask import Flask
+
 import edge_tts
 from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -15,7 +12,7 @@ from google.auth.transport.requests import Request
 from googleapiclient.http import MediaFileUpload
 
 # === Ayarlar ===
-BG_FOLDER = "backrounds"
+BG_FOLDER = "backgrounds"
 MUSIC_FOLDER = "music"
 QUOTES_FILE = "jp_quotes.txt"
 UPLOADED_VIDEOS_FILE = "uploaded_videos.txt"
@@ -28,17 +25,7 @@ video_tags = ["モチベーション", "日本語", "Shorts", "毎日", "イン�
 
 SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
 
-# Flask web server
-app = Flask(__name__)
-
-@app.route('/')
-def home():
-    return "Bot çalışıyor! 🟢"
-
-def run_server():
-    app.run(host="0.0.0.0", port=3000)
-
-# YouTube API Authentication
+# === YouTube API Auth ===
 def authenticate_youtube():
     creds = None
     if os.path.exists("token.pickle"):
@@ -55,6 +42,7 @@ def authenticate_youtube():
     youtube = build("youtube", "v3", credentials=creds)
     return youtube
 
+# === Ses üretimi ===
 async def generate_voice(text, audio_path):
     communicate = edge_tts.Communicate(text, voice="ja-JP-NanamiNeural")
     await communicate.save(audio_path)
@@ -71,11 +59,12 @@ def get_audio_duration(path):
     ]
     return float(subprocess.check_output(cmd).decode().strip())
 
+# === Video oluşturma ===
 def create_video(quote, timestamp):
     audio_path = f"voice_{timestamp}.mp3"
     video_path = f"video_{timestamp}.mp4"
 
-    # Ses oluştur
+    # Ses dosyası oluştur
     asyncio.run(generate_voice(quote, audio_path))
 
     # Arka plan resmi seç
@@ -87,7 +76,7 @@ def create_video(quote, timestamp):
     music_files = [f for f in os.listdir(MUSIC_FOLDER) if f.lower().endswith(".mp3")]
     music_path = os.path.join(MUSIC_FOLDER, random.choice(music_files))
 
-    # Arka plan videosu oluştur (8 sn)
+    # Temel arka plan videosu oluştur (8 sn)
     cmd_create_video = [
         "ffmpeg",
         "-loop", "1",
@@ -101,11 +90,11 @@ def create_video(quote, timestamp):
     ]
     subprocess.run(cmd_create_video, check=True)
 
-    # Süreler
+    # Süre hesapla
     music_duration = get_audio_duration(music_path)
     voice_duration = get_audio_duration(audio_path)
 
-    # Videoyu ses uzunluğuna göre kırp
+    # Videoyu sesi kadar kırp
     cmd_trim_video = [
         "ffmpeg",
         "-i", "temp_video.mp4",
@@ -116,10 +105,11 @@ def create_video(quote, timestamp):
     ]
     subprocess.run(cmd_trim_video, check=True)
 
-    # Müziği ses uzunluğuna göre rastgele yerden başlat
+    # Müziği rastgele yerden başlat
     max_start = max(0, music_duration - voice_duration)
     start_time = random.uniform(0, max_start)
 
+    # Sesleri birleştir
     merged_audio_path = f"merged_audio_{timestamp}.mp3"
     cmd_merge_audio_tracks = [
         "ffmpeg",
@@ -133,7 +123,7 @@ def create_video(quote, timestamp):
     ]
     subprocess.run(cmd_merge_audio_tracks, check=True)
 
-    # Son videoya ses ekle
+    # Son videoyu üret
     cmd_merge_audio = [
         "ffmpeg",
         "-i", "trimmed_video.mp4",
@@ -146,24 +136,14 @@ def create_video(quote, timestamp):
     ]
     subprocess.run(cmd_merge_audio, check=True)
 
-    # Geçici dosyalar temizle
+    # Geçici dosyaları sil
     for temp_file in ["temp_video.mp4", "trimmed_video.mp4", audio_path, merged_audio_path]:
         if os.path.exists(temp_file):
             os.remove(temp_file)
 
     return video_path
 
-def load_uploaded_videos():
-    if not os.path.exists(UPLOADED_VIDEOS_FILE):
-        open(UPLOADED_VIDEOS_FILE, "w").close()
-        return set()
-    with open(UPLOADED_VIDEOS_FILE, "r") as f:
-        return set(line.strip() for line in f if line.strip())
-
-def save_uploaded_video(video_id):
-    with open(UPLOADED_VIDEOS_FILE, "a") as f:
-        f.write(video_id + "\n")
-
+# === Video yükleme ===
 def upload_video(youtube, video_file, title, description, tags, category_id, privacy, kids_flag):
     request_body = {
         "snippet": {
@@ -188,9 +168,9 @@ def upload_video(youtube, video_file, title, description, tags, category_id, pri
     print(f"✅ Yüklendi: https://youtube.com/watch?v={response['id']}")
     return response["id"]
 
+# === Ana görev ===
 def job():
     print("✨ Video botu çalışıyor:", datetime.datetime.now())
-    uploaded_videos = load_uploaded_videos()
 
     with open(QUOTES_FILE, "r", encoding="utf-8") as f:
         quotes = [line.strip() for line in f if line.strip()]
@@ -209,7 +189,7 @@ def job():
 
     try:
         youtube = authenticate_youtube()
-        video_id = upload_video(
+        upload_video(
             youtube,
             video_file,
             video_title,
@@ -219,21 +199,9 @@ def job():
             privacy_status,
             made_for_kids,
         )
-        if video_id in uploaded_videos:
-            print("⚠️ Bu video daha önce yüklenmiş, tekrar yüklenmiyor.")
-        else:
-            save_uploaded_video(video_id)
     except Exception as e:
         print("❌ Video yüklenirken hata:", e)
 
-# Schedule (UTC)
-schedule.every().day.at("22:30").do(job)  # 7:30 JST
-schedule.every().day.at("09:00").do(job)  # 18:00 JST
-schedule.every().day.at("12:30").do(job)  # 21:30 JST
-
+# === Ana başlatıcı ===
 if __name__ == "__main__":
-    threading.Thread(target=run_server).start()
-    print("🚀 Bot başladı, zamanlanmış görevler aktif.")
-    while True:
-        schedule.run_pending()
-        time.sleep(60)
+    job()
