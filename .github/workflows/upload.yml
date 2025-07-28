@@ -1,0 +1,27 @@
+on:
+  schedule:
+    - cron: '30 22 * * *'    # 07:30 JST
+    - cron: '0 9 * * *'      # 18:00 JST
+    - cron: '30 12 * * *'    # 21:30 JST
+  workflow_dispatch:         # Elle tetikleme
+
+jobs:
+  upload_video:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Repo klonla
+        uses: actions/checkout@v3
+
+      - name: ffmpeg kur
+        run: sudo apt update && sudo apt install ffmpeg -y
+
+      - name: Python ortamı hazırla
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Gerekli paketleri yükle
+        run: pip install -r requirements.txt
+
+      - name: Videoyu hazırla ve yükle
+        run: python3 main.py
