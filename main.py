@@ -66,7 +66,8 @@ def create_video(quote, timestamp):
     music_path = os.path.join(MUSIC_FOLDER, random.choice(music_files))
 
     voice_duration = get_audio_duration(audio_path)
-    duration = voice_duration
+    duration = max(voice_duration, 8.0)  # ✅ minimum 8 saniye garantili
+
     font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 
     safe_quote = quote.replace(":", "\\:").replace("'", "\\'").replace(",", "\\,")
