@@ -22,8 +22,15 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: Gerekli paketleri yükle
-        run: pip install -r requirements.txt
+      - name: Gerekli Python paketlerini yükle (manuel)
+        run: |
+          pip install edge-tts
+          pip install google-api-python-client
+          pip install google-auth-httplib2
+          pip install google-auth-oauthlib
+          pip install requests
+          pip install schedule
+          pip install flask
 
       - name: Videoyu hazırla ve yükle
         run: python3 main.py
