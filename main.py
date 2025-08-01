@@ -182,11 +182,6 @@ def job():
     except Exception as e:
         print("❌ Hata:", e)
 
-# Zamanlama (UTC)
-schedule.every().day.at("22:30").do(job)  # 07:30 JST
-schedule.every().day.at("09:00").do(job)  # 18:00 JST
-schedule.every().day.at("12:30").do(job)  # 21:30 JST
-
 if __name__ == "__main__":
     threading.Thread(target=run_server).start()
     print("🚀 Bot başladı, zamanlanmış görevler aktif.")
