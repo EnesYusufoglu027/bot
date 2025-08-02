@@ -64,7 +64,7 @@ def create_video(quote, timestamp):
     audio_path = f"voice_{timestamp}.mp3"
     video_path = f"video_{timestamp}.mp4"
 
-    # Ses dosyası oluştur
+    # Ses dosyasını oluştur
     asyncio.run(generate_voice(quote, audio_path))
 
     # Arka plan resmi seç
@@ -76,72 +76,61 @@ def create_video(quote, timestamp):
     music_files = [f for f in os.listdir(MUSIC_FOLDER) if f.lower().endswith(".mp3")]
     music_path = os.path.join(MUSIC_FOLDER, random.choice(music_files))
 
-    # Temel arka plan videosu oluştur (8 sn)
-    cmd_create_video = [
-        "ffmpeg",
-        "-loop", "1",
-        "-i", bg_image_path,
-        "-c:v", "libx264",
-        "-t", "8",
-        "-pix_fmt", "yuv420p",
-        "-vf", "scale=1080:1920",
-        "-y",
-        "temp_video.mp4"
-    ]
-    subprocess.run(cmd_create_video, check=True)
-
-    # Süre hesapla
+    # Ses süreleri
     music_duration = get_audio_duration(music_path)
     voice_duration = get_audio_duration(audio_path)
-
-    # Videoyu sesi kadar kırp
-    cmd_trim_video = [
-        "ffmpeg",
-        "-i", "temp_video.mp4",
-        "-t", str(voice_duration),
-        "-c", "copy",
-        "-y",
-        "trimmed_video.mp4"
-    ]
-    subprocess.run(cmd_trim_video, check=True)
+    final_duration = max(10, voice_duration)  # En az 10 saniye
 
     # Müziği rastgele yerden başlat
-    max_start = max(0, music_duration - voice_duration)
+    max_start = max(0, music_duration - final_duration)
     start_time = random.uniform(0, max_start)
 
-    # Sesleri birleştir
     merged_audio_path = f"merged_audio_{timestamp}.mp3"
-    cmd_merge_audio_tracks = [
+    subprocess.run([
         "ffmpeg",
         "-ss", str(start_time),
         "-i", music_path,
         "-i", audio_path,
-        "-filter_complex", "[1:a]volume=1[a0];[0:a]volume=0.3[a1];[a0][a1]amix=inputs=2:duration=first:dropout_transition=2",
+        "-filter_complex",
+        "[1:a]volume=1[a0];[0:a]volume=0.3[a1];[a0][a1]amix=inputs=2:duration=first",
         "-c:a", "mp3",
         "-y",
         merged_audio_path
-    ]
-    subprocess.run(cmd_merge_audio_tracks, check=True)
+    ], check=True)
 
-    # Son videoyu üret
-    cmd_merge_audio = [
+    # Videoya yazı ekle + fade-in animasyon
+    text_filter = (
+        f"drawtext=text='{quote}':"
+        "fontcolor=white:"
+        "fontsize=48:"
+        "box=1:boxcolor=black@0.5:boxborderw=10:"
+        "x=(w-text_w)/2:"
+        "y=(h-text_h)/2:"
+        "enable='between(t,0,10)',"
+        "fade=t=in:st=0:d=1"
+    )
+
+    subprocess.run([
         "ffmpeg",
-        "-i", "trimmed_video.mp4",
+        "-loop", "1",
+        "-i", bg_image_path,
         "-i", merged_audio_path,
-        "-c:v", "copy",
+        "-t", str(final_duration),
+        "-vf", f"scale=1080:1920,{text_filter}",
+        "-c:v", "libx264",
         "-c:a", "aac",
-        "-strict", "experimental",
+        "-pix_fmt", "yuv420p",
         "-y",
         video_path
-    ]
-    subprocess.run(cmd_merge_audio, check=True)
+    ], check=True)
 
-    # Geçici dosyaları sil
-    for temp_file in ["temp_video.mp4", "trimmed_video.mp4", audio_path, merged_audio_path]:
+    # Geçici dosyaları temizle
+    for temp_file in [audio_path, merged_audio_path]:
         if os.path.exists(temp_file):
             os.remove(temp_file)
 
     return video_path
+
 
 # === Video yükleme ===
 def upload_video(youtube, video_file, title, description, tags, category_id, privacy, kids_flag):
@@ -205,4 +194,5 @@ def job():
 # === Ana başlatıcı ===
 if __name__ == "__main__":
     job()
+
 
