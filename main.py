@@ -12,7 +12,7 @@ from google.auth.transport.requests import Request
 from googleapiclient.http import MediaFileUpload
 
 # === Ayarlar ===
-BG_FOLDER = "Backgrounds"
+BG_FOLDER = "backgrounds"
 MUSIC_FOLDER = "music"
 QUOTES_FILE = "jp_quotes.txt"
 UPLOADED_VIDEOS_FILE = "uploaded_videos.txt"
@@ -205,3 +205,4 @@ def job():
 # === Ana başlatıcı ===
 if __name__ == "__main__":
     job()
+
