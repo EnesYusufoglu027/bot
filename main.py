@@ -195,4 +195,113 @@ def job():
 if __name__ == "__main__":
     job()
 
+import os
+import random
+import datetime
+from moviepy.editor import *
+from google.oauth2.credentials import Credentials
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaFileUpload
+from flask import Flask
+import threading
+
+# 🔧 Ayarlar
+QUOTE_FILE = "jp_quotes.txt"
+OUTPUT_VIDEO = "output.mp4"
+AUDIO_FILE = "voice.mp3"
+BACKGROUND_FOLDER = "backgrounds"
+FONT_PATH = "NotoSansJP-Regular.otf"
+TOKEN_FILE = "token.json"
+CLIENT_SECRET_FILE = "client_secret.json"
+
+# YouTube API Ayarları
+SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
+CATEGORY_ID = "22"  # People & Blogs
+TAGS = ["motivasyon", "Japonca", "hayat", "sabır", "umut", "özlü sözler"]
+
+def load_credentials():
+    if not os.path.exists(TOKEN_FILE):
+        raise Exception("❌ token.json bulunamadı. Yetkilendirme gerekli.")
+
+    creds = Credentials.from_authorized_user_file(TOKEN_FILE, SCOPES)
+    if not creds.valid:
+        raise Exception("❌ Token geçersiz. Tekrar yetkilendirme gerekiyor.")
+    return creds
+
+def generate_video():
+    with open(QUOTE_FILE, "r", encoding="utf-8") as f:
+        quotes = f.readlines()
+
+    quote = random.choice(quotes).strip()
+    bg_img = random.choice(os.listdir(BACKGROUND_FOLDER))
+    bg_path = os.path.join(BACKGROUND_FOLDER, bg_img)
+
+    background = ImageClip(bg_path).set_duration(10).resize(height=1920).crop(width=1080).set_fps(30)
+
+    txt_clip = TextClip(
+        quote,
+        fontsize=80,
+        font=FONT_PATH,
+        color='white',
+        size=(1000, None),
+        method='caption'
+    ).set_position("center").set_duration(10)
+
+    final = CompositeVideoClip([background, txt_clip])
+    final.write_videofile(OUTPUT_VIDEO, fps=30, audio=AUDIO_FILE)
+
+def upload_to_youtube():
+    creds = load_credentials()
+    youtube = build("youtube", "v3", credentials=creds)
+
+    title = f"Japonca Motivasyon | {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+    description = (
+        "Her gün bir Japonca motivasyon sözü. Hayatınıza ilham katın!\n\n"
+        "#motivasyon #japonca #özlüsözler\n"
+        "🔔 Daha fazla video için abone olmayı unutmayın!"
+    )
+
+    request_body = {
+        "snippet": {
+            "title": title,
+            "description": description,
+            "tags": TAGS,
+            "categoryId": CATEGORY_ID
+        },
+        "status": {
+            "privacyStatus": "public",
+            "selfDeclaredMadeForKids": False
+        }
+    }
+
+    media = MediaFileUpload(OUTPUT_VIDEO)
+    try:
+        video = youtube.videos().insert(
+            part="snippet,status",
+            body=request_body,
+            media_body=media
+        ).execute()
+        print(f"✅ Video yüklendi: https://youtu.be/{video['id']}")
+    except Exception as e:
+        print(f"❌ Video yüklenirken hata: {e}")
+
+def run_bot():
+    print(f"✨ Video botu çalışıyor: {datetime.datetime.now()}")
+    try:
+        generate_video()
+        upload_to_youtube()
+    except Exception as e:
+        print(f"❌ Hata oluştu: {e}")
+
+# Flask sunucusu (GitHub Actions yerine manuel test için)
+app = Flask(__name__)
+
+@app.route("/")
+def index():
+    threading.Thread(target=run_bot).start()
+    return "⏳ Video oluşturuluyor ve yükleniyor..."
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=3000)
+
 
